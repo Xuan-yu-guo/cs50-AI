@@ -1,7 +1,37 @@
 import csv
 import sys
+import heapq
 
-from util import Node, StackFrontier, QueueFrontier
+class StackFrontier():
+    def __init__(self):
+        self.frontier = []
+
+    def add(self, node):
+        self.frontier.append(node)
+
+    def contains_state(self, state):
+        return any(node.state == state for node in self.frontier)
+
+    def empty(self):
+        return len(self.frontier) == 0
+
+    def remove(self):
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            node = self.frontier[-1]
+            self.frontier = self.frontier[:-1]
+            return node
+
+class QueueFrontier(StackFrontier):
+
+    def remove(self):
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            node = self.frontier[0]
+            self.frontier = self.frontier[1:]
+            return node
 
 # Maps names to a set of corresponding person_ids
 names = {}
@@ -62,13 +92,17 @@ def main():
     load_data(directory)
     print("Data loaded.")
 
-    source = person_id_for_name(input("Name: "))
+    #the first person ID
+    source=102
+    #the second person ID
+    target=163
+
     if source is None:
         sys.exit("Person not found.")
-    target = person_id_for_name(input("Name: "))
     if target is None:
         sys.exit("Person not found.")
-
+        
+    # Find shortest path between the two people
     path = shortest_path(source, target)
 
     if path is None:
@@ -91,9 +125,35 @@ def shortest_path(source, target):
 
     If no possible path, returns None.
     """
+# Initialize a queue for BFS and a dictionary to track parents
+    queue = deque()
+    queue.append(source)
+    parents = {}
+    parents[source] = None
 
-    # TODO
-    raise NotImplementedError
+    # Perform BFS
+    while queue:
+        current_person_id = queue.popleft()
+        if current_person_id == target:
+            break
+        for movie_id, neighbor_person_id in neighbors_for_person(current_person_id):
+            if neighbor_person_id not in parents:
+                queue.append(neighbor_person_id)
+                parents[neighbor_person_id] = current_person_id
+
+    # If target not found, return None
+    if target not in parents:
+        return None
+
+    # Reconstruct the shortest path
+    path = []
+    while target is not None:
+        path.append((None, target))
+        target = parents[target]
+    path.reverse()
+
+    return path
+
 
 
 def person_id_for_name(name):
