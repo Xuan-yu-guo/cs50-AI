@@ -22,35 +22,50 @@ def player(board):
     """
     Returns player who has the next turn on a board.
     """
-    raise NotImplementedError
+    count_X = sum(row.count(X) for row in board)
+    count_O = sum(row.count(O) for row in board)
+    return X if count_X == count_O else O
 
 
 def actions(board):
     """
     Returns set of all possible actions (i, j) available on the board.
     """
-    raise NotImplementedError
+    possible_actions = []
+    for i in range(3):
+      for j in range(3):
+        if board[i][j] == EMPTY:
+          possible_actions.append((i,j))
+        return possible_actions
 
 
 def result(board, action):
     """
     Returns the board that results from making move (i, j) on the board.
     """
-    raise NotImplementedError
-
-
-def winner(board):
-    """
-    Returns the winner of the game, if there is one.
-    """
-    raise NotImplementedError
-
+    i, j = action
+    current_player = player(board)
+    new_board = [row[:] for row in board]
+    new_board[i][j] = current_player
+    return new_board
+    
 
 def terminal(board):
     """
     Returns True if game is over, False otherwise.
     """
-    raise NotImplementedError
+    # Check if any player has won
+    if player(board) is not None:
+      return True
+
+    # Check if the board is full
+    for row in board:
+      if EMPTY in row:
+         return False
+
+    # If no winner and the board is full, the game is over
+    return True
+    
 
 
 def utility(board):
