@@ -1,146 +1,184 @@
-import pygame
+import csv
 import sys
-import time
+import heapq
 
-import tictactoe as ttt
+class StackFrontier():
+    def __init__(self):
+        self.frontier = []
 
-pygame.init()
-size = width, height = 600, 400
+    def add(self, node):
+        self.frontier.append(node)
 
-# Colors
-black = (0, 0, 0)
-white = (255, 255, 255)
+    def contains_state(self, state):
+        return any(node.state == state for node in self.frontier)
 
-screen = pygame.display.set_mode(size)
+    def empty(self):
+        return len(self.frontier) == 0
 
-mediumFont = pygame.font.Font("OpenSans-Regular.ttf", 28)
-largeFont = pygame.font.Font("OpenSans-Regular.ttf", 40)
-moveFont = pygame.font.Font("OpenSans-Regular.ttf", 60)
-
-user = None
-board = ttt.initial_state()
-ai_turn = False
-
-while True:
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            sys.exit()
-
-    screen.fill(black)
-
-    # Let user choose a player.
-    if user is None:
-
-        # Draw title
-        title = largeFont.render("Play Tic-Tac-Toe", True, white)
-        titleRect = title.get_rect()
-        titleRect.center = ((width / 2), 50)
-        screen.blit(title, titleRect)
-
-        # Draw buttons
-        playXButton = pygame.Rect((width / 8), (height / 2), width / 4, 50)
-        playX = mediumFont.render("Play as X", True, black)
-        playXRect = playX.get_rect()
-        playXRect.center = playXButton.center
-        pygame.draw.rect(screen, white, playXButton)
-        screen.blit(playX, playXRect)
-
-        playOButton = pygame.Rect(5 * (width / 8), (height / 2), width / 4, 50)
-        playO = mediumFont.render("Play as O", True, black)
-        playORect = playO.get_rect()
-        playORect.center = playOButton.center
-        pygame.draw.rect(screen, white, playOButton)
-        screen.blit(playO, playORect)
-
-        # Check if button is clicked
-        click, _, _ = pygame.mouse.get_pressed()
-        if click == 1:
-            mouse = pygame.mouse.get_pos()
-            if playXButton.collidepoint(mouse):
-                time.sleep(0.2)
-                user = ttt.X
-            elif playOButton.collidepoint(mouse):
-                time.sleep(0.2)
-                user = ttt.O
-
-    else:
-
-        # Draw game board
-        tile_size = 80
-        tile_origin = (width / 2 - (1.5 * tile_size),
-                       height / 2 - (1.5 * tile_size))
-        tiles = []
-        for i in range(3):
-            row = []
-            for j in range(3):
-                rect = pygame.Rect(
-                    tile_origin[0] + j * tile_size,
-                    tile_origin[1] + i * tile_size,
-                    tile_size, tile_size
-                )
-                pygame.draw.rect(screen, white, rect, 3)
-
-                if board[i][j] != ttt.EMPTY:
-                    move = moveFont.render(board[i][j], True, white)
-                    moveRect = move.get_rect()
-                    moveRect.center = rect.center
-                    screen.blit(move, moveRect)
-                row.append(rect)
-            tiles.append(row)
-
-        game_over = ttt.terminal(board)
-        player = ttt.player(board)
-
-        # Show title
-        if game_over:
-            winner = ttt.winner(board)
-            if winner is None:
-                title = f"Game Over: Tie."
-            else:
-                title = f"Game Over: {winner} wins."
-        elif user == player:
-            title = f"Play as {user}"
+    def remove(self):
+        if self.empty():
+            raise Exception("empty frontier")
         else:
-            title = f"Computer thinking..."
-        title = largeFont.render(title, True, white)
-        titleRect = title.get_rect()
-        titleRect.center = ((width / 2), 30)
-        screen.blit(title, titleRect)
+            node = self.frontier[-1]
+            self.frontier = self.frontier[:-1]
+            return node
 
-        # Check for AI move
-        if user != player and not game_over:
-            if ai_turn:
-                time.sleep(0.5)
-                move = ttt.minimax(board)
-                board = ttt.result(board, move)
-                ai_turn = False
+class QueueFrontier(StackFrontier):
+
+    def remove(self):
+        if self.empty():
+            raise Exception("empty frontier")
+        else:
+            node = self.frontier[0]
+            self.frontier = self.frontier[1:]
+            return node
+
+# Maps names to a set of corresponding person_ids
+names = {}
+
+# Maps person_ids to a dictionary of: name, birth, movies (a set of movie_ids)
+people = {}
+
+# Maps movie_ids to a dictionary of: title, year, stars (a set of person_ids)
+movies = {}
+
+
+def load_data(directory):
+    """
+    Load data from CSV files into memory.
+    """
+    # Load people
+    with open(f"{directory}/people.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            people[row["id"]] = {
+                "name": row["name"],
+                "birth": row["birth"],
+                "movies": set()
+            }
+            if row["name"].lower() not in names:
+                names[row["name"].lower()] = {row["id"]}
             else:
-                ai_turn = True
+                names[row["name"].lower()].add(row["id"])
 
-        # Check for a user move
-        click, _, _ = pygame.mouse.get_pressed()
-        if click == 1 and user == player and not game_over:
-            mouse = pygame.mouse.get_pos()
-            for i in range(3):
-                for j in range(3):
-                    if (board[i][j] == ttt.EMPTY and tiles[i][j].collidepoint(mouse)):
-                        board = ttt.result(board, (i, j))
+    # Load movies
+    with open(f"{directory}/movies.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            movies[row["id"]] = {
+                "title": row["title"],
+                "year": row["year"],
+                "stars": set()
+            }
 
-        if game_over:
-            againButton = pygame.Rect(width / 3, height - 65, width / 3, 50)
-            again = mediumFont.render("Play Again", True, black)
-            againRect = again.get_rect()
-            againRect.center = againButton.center
-            pygame.draw.rect(screen, white, againButton)
-            screen.blit(again, againRect)
-            click, _, _ = pygame.mouse.get_pressed()
-            if click == 1:
-                mouse = pygame.mouse.get_pos()
-                if againButton.collidepoint(mouse):
-                    time.sleep(0.2)
-                    user = None
-                    board = ttt.initial_state()
-                    ai_turn = False
+    # Load stars
+    with open(f"{directory}/stars.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                people[row["person_id"]]["movies"].add(row["movie_id"])
+                movies[row["movie_id"]]["stars"].add(row["person_id"])
+            except KeyError:
+                pass
 
-    pygame.display.flip()
+
+def main(source, target):
+    print("Loading data...")        
+    # Find shortest path between the two people
+    path = shortest_path(source, target)
+
+    if path is None:
+        print("Not connected.")
+    else:
+        degrees = len(path)
+        print(f"{degrees} degrees of separation.")
+        path = [(None, source)] + path
+        for i in range(degrees):
+            person1 = people[path[i][1]]["name"]
+            person2 = people[path[i + 1][1]]["name"]
+            movie = movies[path[i + 1][0]]["title"]
+            print(f"{i + 1}: {person1} and {person2} starred in {movie}")
+
+
+def shortest_path(source, target):
+    """
+    Returns the shortest list of (movie_id, person_id) pairs
+    that connect the source to the target.
+
+    If no possible path, returns None.
+    """
+# Initialize a queue for BFS and a dictionary to track parents
+    from collections import deque
+    queue = deque()
+    queue.append(source)
+    parents = {}
+    parents[source] = None
+
+    # Perform BFS
+    while queue:
+        current_person_id = queue.popleft()
+        if current_person_id == target:
+            break
+        for movie_id, neighbor_person_id in neighbors_for_person(current_person_id):
+            if neighbor_person_id not in parents:
+                queue.append(neighbor_person_id)
+                parents[neighbor_person_id] = current_person_id
+
+    # If target not found, return None
+    if target not in parents:
+        return None
+
+    # Reconstruct the shortest path
+    path = []
+    while target is not None:
+        path.append((None, target))
+        target = parents[target]
+    path.reverse()
+
+    return path
+
+
+
+def person_id_for_name(name):
+    """
+    Returns the IMDB id for a person's name,
+    resolving ambiguities as needed.
+    """
+    person_ids = list(names.get(name.lower(), set()))
+    if len(person_ids) == 0:
+        return None
+    elif len(person_ids) > 1:
+        print(f"Which '{name}'?")
+        for person_id in person_ids:
+            person = people[person_id]
+            name = person["name"]
+            birth = person["birth"]
+            print(f"ID: {person_id}, Name: {name}, Birth: {birth}")
+        try:
+            person_id = input("Intended Person ID: ")
+            if person_id in person_ids:
+                return person_id
+        except ValueError:
+            pass
+        return None
+    else:
+        return person_ids[0]
+
+
+def neighbors_for_person(person_id):
+    """
+    Returns (movie_id, person_id) pairs for people
+    who starred with a given person.
+    """
+    movie_ids = people[person_id]["movies"]
+    neighbors = set()
+    for movie_id in movie_ids:
+        for person_id in movies[movie_id]["stars"]:
+            neighbors.add((movie_id, person_id))
+    return neighbors
+
+
+if __name__ == "__main__":
+    source = 102
+    target = 163
+    main(source, target)
