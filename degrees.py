@@ -82,26 +82,8 @@ def load_data(directory):
                 pass
 
 
-def main():
-    if len(sys.argv) > 2:
-        sys.exit("Usage: python degrees.py [directory]")
-    directory = sys.argv[1] if len(sys.argv) == 2 else "large"
-
-    # Load data from files into memory
-    print("Loading data...")
-    load_data(directory)
-    print("Data loaded.")
-
-    #the first person ID
-    source=102
-    #the second person ID
-    target=163
-
-    if source is None:
-        sys.exit("Person not found.")
-    if target is None:
-        sys.exit("Person not found.")
-        
+def main(source, target):
+    print("Loading data...")        
     # Find shortest path between the two people
     path = shortest_path(source, target)
 
@@ -126,6 +108,7 @@ def shortest_path(source, target):
     If no possible path, returns None.
     """
 # Initialize a queue for BFS and a dictionary to track parents
+    from collections import deque
     queue = deque()
     queue.append(source)
     parents = {}
@@ -196,4 +179,6 @@ def neighbors_for_person(person_id):
 
 
 if __name__ == "__main__":
-    main()
+    source = 102
+    target = 163
+    main(source, target)
