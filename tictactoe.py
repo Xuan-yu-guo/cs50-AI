@@ -68,6 +68,24 @@ def terminal(board):
     
 
 
+def winner(board):
+   """
+   Return the winner of the game, if there is one.
+   """
+   for player in [X, O]:
+    #check rows, columns, and diagonals for winning combinations
+    for i in range(3):
+      if all(cell == player for cell in board[i]):
+        return player 
+        if all(board[j][i] == player for j in range(3)):
+          return player
+        if all(board[i][i] == player for i in range(3)):
+          return player
+        if all(board[i][2-i] == player for i in range(3)):
+          return player
+          return None #If no winner is found 
+
+
 def utility(board):
     """
     Returns 1 if X has won the game, -1 if O has won, 0 otherwise.
